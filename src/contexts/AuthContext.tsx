@@ -69,21 +69,18 @@ export function AuthProvider({
       error
     } = await supabase.auth.signUp({
       email,
-      password
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+          user_type: userType,
+          team: userType === 'admin' ? team : undefined
+        }
+      }
     });
     if (error) throw error;
     if (!data.user) throw new Error('User creation failed');
-    // Create profile
-    const {
-      error: profileError
-    } = await supabase.from('profiles').insert({
-      id: data.user.id,
-      email,
-      full_name: fullName,
-      user_type: userType,
-      team: userType === 'admin' ? team : undefined
-    });
-    if (profileError) throw profileError;
+    // Profile will be created automatically by database trigger
   };
   const signIn = async (email: string, password: string) => {
     const {

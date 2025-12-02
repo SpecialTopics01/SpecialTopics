@@ -1,7 +1,10 @@
 -- Add call_signals table for WebRTC signaling
 -- Run this in your Supabase SQL Editor
 
-CREATE TABLE IF NOT EXISTS call_signals (
+-- Drop existing table and related objects if they exist
+DROP TABLE IF EXISTS call_signals CASCADE;
+
+CREATE TABLE call_signals (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   call_id uuid REFERENCES call_logs(id) ON DELETE CASCADE,
   caller_id uuid REFERENCES auth.users NOT NULL,
@@ -25,6 +28,8 @@ CREATE POLICY "Users can insert signals for their calls"
   WITH CHECK (auth.uid() = caller_id OR auth.uid() = receiver_id);
 
 -- Create index for faster queries
+DROP INDEX IF EXISTS idx_call_signals_call_id;
+DROP INDEX IF EXISTS idx_call_signals_created_at;
 CREATE INDEX idx_call_signals_call_id ON call_signals(call_id);
 CREATE INDEX idx_call_signals_created_at ON call_signals(created_at DESC);
 
@@ -36,6 +41,7 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_online boolean DEFAULT false;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS last_seen timestamp with time zone DEFAULT now();
 
 -- Add unique constraint on name if it doesn't exist
+DROP INDEX IF EXISTS emergency_teams_name_unique;
 ALTER TABLE emergency_teams ADD CONSTRAINT IF NOT EXISTS emergency_teams_name_unique UNIQUE (name);
 
 -- Seed emergency teams data (only insert if not exists)
@@ -71,6 +77,7 @@ WHERE NOT EXISTS (
 );
 
 -- Update online status when admin logs in
+DROP FUNCTION IF EXISTS update_admin_online_status() CASCADE;
 CREATE OR REPLACE FUNCTION update_admin_online_status()
 RETURNS trigger AS $$
 BEGIN
@@ -88,9 +95,74 @@ CREATE TRIGGER on_auth_user_created_update_admin_status
   FOR EACH ROW EXECUTE FUNCTION update_admin_online_status();
 
 -- Function to set admin offline (call this when admin logs out or disconnects)
+DROP FUNCTION IF EXISTS set_admin_offline(uuid) CASCADE;
 CREATE OR REPLACE FUNCTION set_admin_offline(admin_id uuid)
 RETURNS void AS $$
 BEGIN
   UPDATE profiles SET is_online = false, last_seen = now() WHERE id = admin_id AND user_type = 'admin';
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Fix Row Level Security policies for profiles table
+-- Enable RLS on profiles table if not already enabled
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist (to avoid conflicts)
+DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
+DROP POLICY IF EXISTS "Users can insert own profile" ON profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
+DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
+DROP POLICY IF EXISTS "Service role can insert profiles" ON profiles;
+
+-- Create policies for profiles table
+CREATE POLICY "Users can view own profile"
+  ON profiles FOR SELECT
+  USING (auth.uid() = id);
+
+CREATE POLICY "Users can insert own profile"
+  ON profiles FOR INSERT
+  WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Users can update own profile"
+  ON profiles FOR UPDATE
+  USING (auth.uid() = id);
+
+CREATE POLICY "Admins can view all profiles"
+  ON profiles FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid() AND user_type = 'admin'
+    )
+  );
+
+-- Enable realtime for profiles table
+ALTER PUBLICATION supabase_realtime ADD TABLE profiles;
+
+-- Create a function to handle new user profile creation
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, full_name, user_type, team)
+  VALUES (
+    new.id,
+    new.email,
+    new.raw_user_meta_data->>'full_name',
+    new.raw_user_meta_data->>'user_type',
+    new.raw_user_meta_data->>'team'
+  );
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create trigger to automatically create profile on user signup
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Also allow service role to insert profiles
+CREATE POLICY "Service role can insert profiles"
+  ON profiles FOR INSERT
+  WITH CHECK (auth.role() = 'service_role');
