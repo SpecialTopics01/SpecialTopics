@@ -42,7 +42,7 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS last_seen timestamp with time zone
 
 -- Add unique constraint on name if it doesn't exist
 DROP INDEX IF EXISTS emergency_teams_name_unique;
-ALTER TABLE emergency_teams ADD CONSTRAINT IF NOT EXISTS emergency_teams_name_unique UNIQUE (name);
+ALTER TABLE emergency_teams ADD CONSTRAINT emergency_teams_name_unique UNIQUE (name);
 
 -- Seed emergency teams data (only insert if not exists)
 INSERT INTO emergency_teams (name, type, location, lat, lng, hotline)
