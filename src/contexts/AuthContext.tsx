@@ -51,14 +51,24 @@ export function AuthProvider({
   }, []);
   const fetchProfile = async (userId: string) => {
     try {
+      console.log('Fetching profile for user:', userId);
       const {
         data,
         error
       } = await supabase.from('profiles').select('*').eq('id', userId).single();
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching profile:', error);
+        // If profile doesn't exist, try to create it manually
+        if (error.code === 'PGRST116') {
+          console.log('Profile not found, this might indicate the trigger didn\'t work');
+        }
+        throw error;
+      }
+      console.log('Profile fetched successfully:', data);
       setProfile(data);
     } catch (error) {
       console.error('Error fetching profile:', error);
+      setProfile(null);
     } finally {
       setLoading(false);
     }
@@ -83,13 +93,28 @@ export function AuthProvider({
     // Profile will be created automatically by database trigger
   };
   const signIn = async (email: string, password: string) => {
+    console.log('Attempting to sign in user:', email);
     const {
+      data,
       error
     } = await supabase.auth.signInWithPassword({
       email,
       password
     });
-    if (error) throw error;
+    if (error) {
+      console.error('Sign in error:', error);
+      throw error;
+    }
+
+    console.log('Sign in successful, user:', data.user?.id);
+
+    // Wait a moment for the auth state change to propagate
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // If we have a user but no profile after login, try to fetch/create it
+    if (data.user) {
+      await fetchProfile(data.user.id);
+    }
   };
   const signOut = async () => {
     const {

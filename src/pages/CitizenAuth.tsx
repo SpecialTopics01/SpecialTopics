@@ -26,13 +26,13 @@ export function CitizenAuth() {
     try {
       if (isLogin) {
         await signIn(formData.email, formData.password);
-        navigate('/citizen/dashboard');
+        // Navigation will be handled by AppRoutes based on auth state
       } else {
         if (formData.password !== formData.confirmPassword) {
           throw new Error('Passwords do not match');
         }
         await signUp(formData.email, formData.password, formData.fullName, 'citizen');
-        navigate('/citizen/dashboard');
+        // Navigation will be handled by AppRoutes based on auth state
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred');
