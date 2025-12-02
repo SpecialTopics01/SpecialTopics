@@ -2,165 +2,126 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/Button';
 import { MapView } from '../components/MapView';
-import { PhoneIcon, MapPinIcon, BookmarkIcon, ClockIcon, MapIcon } from 'lucide-react';
+import { MapPinIcon, ClockIcon, BookmarkIcon, LogOutIcon, ChevronUpIcon, ChevronDownIcon } from 'lucide-react';
 import type { EmergencyTeam } from '../types/database';
 export function CitizenDashboard() {
   const {
     profile,
     signOut
   } = useAuth();
-  const [showMap, setShowMap] = useState(false);
+  const [isPanelExpanded, setIsPanelExpanded] = useState(false);
   const handleCallTeam = (team: EmergencyTeam) => {
     // TODO: Implement video call functionality
     console.log('Initiating call to:', team);
     alert(`Video call to ${team.name} will be implemented in the next phase`);
   };
-  return <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-red-600 text-white py-4 px-6 shadow-lg sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">🚨 Emergency Connect</h1>
-            <p className="text-red-100 text-sm">
-              Welcome, {profile?.full_name}
-            </p>
+  return <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
+      {/* Compact Header */}
+      <header className="bg-red-600 text-white py-3 px-4 shadow-lg z-20 flex-shrink-0">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🚨</span>
+            <div>
+              <h1 className="text-lg font-bold leading-tight">
+                Emergency Connect
+              </h1>
+              <p className="text-red-100 text-xs">{profile?.full_name}</p>
+            </div>
           </div>
-          <Button variant="ghost" onClick={signOut} className="text-white hover:bg-red-700">
-            Logout
-          </Button>
+          <button onClick={signOut} className="p-2 hover:bg-red-700 rounded-lg transition-colors" aria-label="Logout">
+            <LogOutIcon className="w-5 h-5" />
+          </button>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Emergency Alert */}
-        <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6 mb-8">
-          <h2 className="text-red-800 text-xl font-bold mb-2">
-            Emergency Services Available 24/7
-          </h2>
-          <p className="text-red-700">
-            Tap on any emergency team marker on the map to start a video call
-          </p>
-        </div>
+      {/* Full Map Area */}
+      <div className="flex-1 relative">
+        <MapView onCallTeam={handleCallTeam} />
 
-        {/* Map Section */}
-        {showMap ? <div className="bg-white rounded-lg shadow-lg p-4 mb-8">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-900">
-                Emergency Teams in Bukidnon
-              </h2>
-              <Button variant="secondary" size="sm" onClick={() => setShowMap(false)}>
-                Hide Map
-              </Button>
-            </div>
-            <div className="rounded-lg overflow-hidden border-2 border-gray-200" style={{
-          height: '600px'
-        }}>
-              <MapView onCallTeam={handleCallTeam} />
-            </div>
-            <div className="mt-4 flex items-start gap-3 p-4 bg-blue-50 rounded-lg">
-              <MapIcon className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-blue-800">
-                <p className="font-semibold mb-1">How to use the map:</p>
-                <ul className="space-y-1 text-blue-700">
-                  <li>• Red dot shows your current location</li>
-                  <li>
-                    • Colored markers show emergency teams (Blue = Police, Red =
-                    Fire, Green = Rescue)
-                  </li>
-                  <li>
-                    • Click any marker to see team details and start a video
-                    call
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div> : <button onClick={() => setShowMap(true)} className="w-full bg-white rounded-lg shadow-md p-8 text-left hover:shadow-lg transition-all border-2 border-transparent hover:border-red-500 mb-8">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="bg-red-100 p-4 rounded-full">
-                  <MapIcon className="w-8 h-8 text-red-600" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                    View Emergency Map
-                  </h3>
-                  <p className="text-gray-600">
-                    See all emergency teams in Bukidnon and their locations
-                  </p>
-                </div>
-              </div>
-              <div className="text-red-600 text-4xl">→</div>
-            </div>
-          </button>}
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <button className="bg-white rounded-lg shadow-md p-6 text-left hover:shadow-lg transition-shadow border-2 border-transparent hover:border-red-500">
-            <div className="flex items-center mb-4">
-              <div className="bg-red-100 p-3 rounded-full mr-4">
-                <PhoneIcon className="w-6 h-6 text-red-600" />
-              </div>
+        {/* Emergency Alert Overlay */}
+        <div className="absolute top-4 left-4 right-4 md:left-auto md:right-4 md:max-w-md z-10">
+          <div className="bg-red-600 text-white rounded-lg shadow-2xl p-4 border-2 border-red-700">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl flex-shrink-0">⚠️</span>
               <div>
-                <h3 className="text-lg font-bold text-gray-900">
-                  Quick Emergency Call
-                </h3>
-                <p className="text-gray-600 text-sm">Fastest response time</p>
+                <h2 className="font-bold text-sm mb-1">
+                  Emergency Services 24/7
+                </h2>
+                <p className="text-red-100 text-xs">
+                  Tap any marker to call emergency teams
+                </p>
               </div>
             </div>
-            <p className="text-gray-500 text-sm">
-              Connect with the nearest available emergency team instantly
-            </p>
-          </button>
+          </div>
+        </div>
+      </div>
 
-          <button className="bg-white rounded-lg shadow-md p-6 text-left hover:shadow-lg transition-shadow border-2 border-transparent hover:border-red-500">
-            <div className="flex items-center mb-4">
-              <div className="bg-red-100 p-3 rounded-full mr-4">
+      {/* Bottom Feature Panel */}
+      <div className="bg-white border-t-4 border-red-600 shadow-2xl z-20 flex-shrink-0">
+        {/* Mobile Expand/Collapse Button */}
+        <button onClick={() => setIsPanelExpanded(!isPanelExpanded)} className="w-full py-2 flex items-center justify-center gap-2 text-gray-600 hover:bg-gray-50 transition-colors md:hidden">
+          <span className="text-sm font-medium">
+            {isPanelExpanded ? 'Hide Details' : 'Show Details'}
+          </span>
+          {isPanelExpanded ? <ChevronDownIcon className="w-4 h-4" /> : <ChevronUpIcon className="w-4 h-4" />}
+        </button>
+
+        {/* Feature Grid */}
+        <div className={`
+          grid grid-cols-3 gap-4 p-4
+          ${isPanelExpanded ? 'block' : 'hidden md:grid'}
+        `}>
+          {/* Your Location */}
+          <div className="text-center">
+            <button className="w-full p-4 rounded-lg hover:bg-red-50 transition-colors group">
+              <div className="bg-red-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-red-200 transition-colors">
                 <MapPinIcon className="w-6 h-6 text-red-600" />
               </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">
-                  Share Location
-                </h3>
-                <p className="text-gray-600 text-sm">Help teams find you</p>
-              </div>
-            </div>
-            <p className="text-gray-500 text-sm">
-              Send your exact location to emergency responders
-            </p>
-          </button>
-        </div>
-
-        {/* Secondary Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center mb-4">
-              <BookmarkIcon className="w-5 h-5 text-gray-600 mr-2" />
-              <h3 className="text-lg font-semibold text-gray-900">
-                Saved Locations
+              <h3 className="font-semibold text-gray-900 text-sm mb-1">
+                Your Location
               </h3>
-            </div>
-            <p className="text-gray-600 text-sm mb-4">
-              Quick access to your bookmarked emergency teams
-            </p>
-            <p className="text-gray-400 text-sm italic">
-              No saved locations yet
-            </p>
+              <p className="text-xs text-gray-600">Bukidnon, Philippines</p>
+              <p className="text-xs text-blue-600 font-medium mt-1">
+                Update location
+              </p>
+            </button>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center mb-4">
-              <ClockIcon className="w-5 h-5 text-gray-600 mr-2" />
-              <h3 className="text-lg font-semibold text-gray-900">
+          {/* Call History */}
+          <div className="text-center">
+            <button className="w-full p-4 rounded-lg hover:bg-gray-50 transition-colors group">
+              <div className="bg-gray-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-gray-200 transition-colors">
+                <ClockIcon className="w-6 h-6 text-gray-600" />
+              </div>
+              <h3 className="font-semibold text-gray-900 text-sm mb-1">
                 Call History
               </h3>
-            </div>
-            <p className="text-gray-600 text-sm mb-4">
-              View your past emergency calls
-            </p>
-            <p className="text-gray-400 text-sm italic">No call history yet</p>
+              <p className="text-xs text-gray-600">No recent calls</p>
+              <p className="text-xs text-gray-400 mt-1">View all</p>
+            </button>
+          </div>
+
+          {/* Bookmarks */}
+          <div className="text-center">
+            <button className="w-full p-4 rounded-lg hover:bg-gray-50 transition-colors group">
+              <div className="bg-gray-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-gray-200 transition-colors">
+                <BookmarkIcon className="w-6 h-6 text-gray-600" />
+              </div>
+              <h3 className="font-semibold text-gray-900 text-sm mb-1">
+                Bookmarks
+              </h3>
+              <p className="text-xs text-gray-600">0 saved teams</p>
+              <p className="text-xs text-gray-400 mt-1">Quick access</p>
+            </button>
           </div>
         </div>
-      </main>
+
+        {/* Desktop: Always show quick stats */}
+        <div className="hidden md:grid grid-cols-3 gap-4 px-4 pb-4 text-center text-xs text-gray-500">
+          <div>Lat: 8.0542° N</div>
+          <div>Last call: Never</div>
+          <div>Saved: 0 teams</div>
+        </div>
+      </div>
     </div>;
 }

@@ -24,7 +24,12 @@ INSERT INTO emergency_teams (name, type, location, lat, lng, hotline) VALUES
   ('Sumilao Emergency Team', 'rescue', 'Sumilao, Bukidnon', 8.2833, 124.9500, '(088) 221-7890'),
   ('Impasugong Rescue Unit', 'rescue', 'Impasugong, Bukidnon', 8.3000, 125.0000, '(088) 356-8901'),
   ('Libona Emergency Response', 'rescue', 'Libona, Bukidnon', 8.3333, 124.7333, '(088) 221-9012'),
-  ('Talakag Rescue Team', 'rescue', 'Talakag, Bukidnon', 8.2333, 124.6000, '(088) 356-0123');
+  ('Talakag Rescue Team', 'rescue', 'Talakag, Bukidnon', 8.2333, 124.6000, '(088) 356-0123'),
+  
+  -- Specific Requested Locations
+  ('CDRRMO Valencia', 'rescue', 'Valencia City, Bukidnon', 7.930789359108319, 125.09803547110613, '(088) 828-9999'),
+  ('MDRRMC Pangantucan', 'rescue', 'Pangantucan, Bukidnon', 7.828728554466357, 124.82813288569363, '(088) 356-8888'),
+  ('Adtuyon Rescue Outpost', 'rescue', 'Pangantucan, Bukidnon', 7.815833528296667, 124.85540567191764, '(088) 356-7777');
 
 -- Verify the data was inserted
 SELECT 
@@ -33,3 +38,14 @@ SELECT
 FROM emergency_teams
 GROUP BY type
 ORDER BY type;
+
+-- View the newly added specific locations
+SELECT 
+  name,
+  location,
+  lat,
+  lng,
+  hotline
+FROM emergency_teams
+WHERE name IN ('CDRRMO Valencia', 'MDRRMC Pangantucan', 'Adtuyon Rescue Outpost')
+ORDER BY name;
