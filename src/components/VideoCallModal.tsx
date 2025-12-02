@@ -59,7 +59,7 @@ export function VideoCallModal({
     }
   };
   if (callState.status === 'idle') return null;
-  return <div className="fixed inset-0 bg-black z-50 flex flex-col">
+  return <div className="fixed inset-0 bg-black z-[60] flex flex-col">
       {/* Remote Video (Main) */}
       <div className="flex-1 relative bg-gray-900">
         {callState.remoteStream ? <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center">

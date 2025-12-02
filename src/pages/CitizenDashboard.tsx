@@ -45,13 +45,28 @@ export function CitizenDashboard() {
   const handleCallTeam = async (team: EmergencyTeam) => {
     setCallError(null);
     try {
+      console.log('Attempting to call team:', team);
+      console.log('Available admins:', admins);
+      console.log('Looking for team type:', team.type);
+
       // Find an admin user with matching team type
-      const matchingAdmin = admins.find(admin => admin.team === team.type);
+      const matchingAdmins = admins.filter(admin => admin.team === team.type);
+      console.log('Matching admins found:', matchingAdmins);
+
+      const matchingAdmin = matchingAdmins.find(admin => admin.is_online) || matchingAdmins[0];
+
       if (!matchingAdmin) {
+        console.error('No admin found for team type:', team.type);
+        console.log('Available admin teams:', admins.map(a => a.team));
+        console.log('All available admins:', admins);
         // Show helpful error if no admin is available
         setCallError(`No ${team.type} team admin is currently registered. ` + `Please try again later or contact: ${team.hotline}`);
         return;
       }
+
+      console.log('Found admin for call:', matchingAdmin);
+      console.log('Admin online status:', matchingAdmin.is_online);
+      console.log('Initiating call to admin ID:', matchingAdmin.id);
       await initiateCall(team, matchingAdmin.id);
     } catch (error: any) {
       console.error('Error initiating call:', error);

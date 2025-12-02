@@ -9,6 +9,8 @@ export interface Database {
           email: string;
           team?: string;
           location?: string;
+          is_online?: boolean;
+          last_seen?: string;
           created_at: string;
           updated_at: string;
         };
@@ -19,6 +21,8 @@ export interface Database {
           email: string;
           team?: string;
           location?: string;
+          is_online?: boolean;
+          last_seen?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -29,6 +33,8 @@ export interface Database {
           email?: string;
           team?: string;
           location?: string;
+          is_online?: boolean;
+          last_seen?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -120,6 +126,38 @@ export interface Database {
           created_at?: string;
         };
       };
+      call_signals: {
+        Row: {
+          id: string;
+          call_id: string;
+          caller_id: string;
+          receiver_id: string;
+          team_id: string;
+          type: 'offer' | 'answer' | 'ice-candidate' | 'end-call';
+          signal: any;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          call_id: string;
+          caller_id: string;
+          receiver_id: string;
+          team_id: string;
+          type: 'offer' | 'answer' | 'ice-candidate' | 'end-call';
+          signal: any;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          call_id?: string;
+          caller_id?: string;
+          receiver_id?: string;
+          team_id?: string;
+          type?: 'offer' | 'answer' | 'ice-candidate' | 'end-call';
+          signal?: any;
+          created_at?: string;
+        };
+      };
     };
   };
 }
@@ -127,3 +165,4 @@ export type Profile = Database['public']['Tables']['profiles']['Row'];
 export type EmergencyTeam = Database['public']['Tables']['emergency_teams']['Row'];
 export type CallLog = Database['public']['Tables']['call_logs']['Row'];
 export type Bookmark = Database['public']['Tables']['bookmarks']['Row'];
+export type CallSignal = Database['public']['Tables']['call_signals']['Row'];

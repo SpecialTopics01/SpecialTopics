@@ -21,7 +21,7 @@ Your Supabase credentials are already configured in `lib/supabase.ts`.
 
 #### Create Database Tables
 
-Run this SQL in your Supabase SQL Editor (https://pdzttgkijnmhavckqpos.supabase.co):
+Run this SQL in your Supabase SQL Editor (https://mvcrwauciujkdabhdhrg.supabase.co):
 
 ```sql
 -- Enable UUID extension
@@ -253,7 +253,7 @@ npm run dev
 
 ## 🔑 API Keys
 
-- **Supabase URL**: https://pdzttgkijnmhavckqpos.supabase.co
+- **Supabase URL**: https://mvcrwauciujkdabhdhrg.supabase.co
 - **Google Maps API Key**: AIzaSyBUV8Ag1aOioVL3SErpMIItjsGAbnE9sR4
 
 Both are configured in `lib/supabase.ts`.

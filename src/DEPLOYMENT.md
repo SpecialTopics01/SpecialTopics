@@ -186,7 +186,7 @@ If you want to hide API keys (optional for now since they're public keys):
 
 **Create `.env` file:**
 ```env
-VITE_SUPABASE_URL=https://pdzttgkijnmhavckqpos.supabase.co
+VITE_SUPABASE_URL=https://mvcrwauciujkdabhdhrg.supabase.co
 VITE_SUPABASE_ANON_KEY=your_key_here
 VITE_GOOGLE_MAPS_KEY=AIzaSyBUV8Ag1aOioVL3SErpMIItjsGAbnE9sR4
 ```

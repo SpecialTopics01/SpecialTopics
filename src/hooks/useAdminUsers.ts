@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import type { Profile } from '../types/database';
 interface AdminUser extends Profile {
   is_online?: boolean;
+  last_seen?: string;
 }
 export function useAdminUsers(teamType?: string) {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
@@ -34,14 +35,25 @@ export function useAdminUsers(teamType?: string) {
     }
   };
   const getAvailableAdmin = (teamType: string): AdminUser | null => {
-    // Find an admin with matching team type
+    // Find online admins with matching team type
+    const matchingOnlineAdmins = admins.filter(admin => admin.team === teamType && admin.is_online);
+    if (matchingOnlineAdmins.length > 0) {
+      return matchingOnlineAdmins[0];
+    }
+
+    // Fallback: find any admin with matching team type (even offline)
     const matchingAdmins = admins.filter(admin => admin.team === teamType);
     if (matchingAdmins.length > 0) {
-      // Return first available admin (in production, check online status)
       return matchingAdmins[0];
     }
 
-    // Fallback: return any admin
+    // Last fallback: return any online admin
+    const onlineAdmins = admins.filter(admin => admin.is_online);
+    if (onlineAdmins.length > 0) {
+      return onlineAdmins[0];
+    }
+
+    // Final fallback: return any admin
     return admins.length > 0 ? admins[0] : null;
   };
   return {

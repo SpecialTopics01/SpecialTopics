@@ -67,6 +67,7 @@ export function useWebRTC() {
 
     // Handle remote stream
     pc.ontrack = event => {
+      console.log('WebRTC: Remote stream received');
       const remoteStream = event.streams[0];
       setCallState(prev => ({
         ...prev,
@@ -74,6 +75,7 @@ export function useWebRTC() {
         remoteStream,
         startTime: new Date()
       }));
+      console.log('WebRTC: Call state updated to connected');
     };
 
     // Handle ICE candidates
@@ -181,8 +183,13 @@ export function useWebRTC() {
 
   // Answer call (Admin side)
   const answerCall = async (callId: string, callerId: string, offerSignal: any) => {
-    if (!user) return;
+    console.log('WebRTC: Answering call', { callId, callerId, offerSignal });
+    if (!user) {
+      console.error('WebRTC: No user found for answering call');
+      return;
+    }
     try {
+      console.log('WebRTC: Setting call state to connecting');
       setCallState(prev => ({
         ...prev,
         status: 'connecting',

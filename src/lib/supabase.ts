@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../types/database';
-const supabaseUrl = 'https://pdzttgkijnmhavckqpos.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBkenR0Z2tpam5taGF2Y2txcG9zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2Njg1NzIsImV4cCI6MjA4MDI0NDU3Mn0.MIFss_2tanT54IoQf-e5vTNHnZnzmTR6EFoYRtJNyx4';
+const supabaseUrl = 'https://mvcrwauciujkdabhdhrg.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12Y3J3YXVjaXVqa2RhYmhkaHJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2ODM3MjMsImV4cCI6MjA4MDI1OTcyM30.ixO00Cam1w4rZ-AM7iQLWIgE0LKlosw9jGApqgxdgPA';
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 export type UserType = 'citizen' | 'admin';
 export type EmergencyTeamType = 'police' | 'fire' | 'rescue';
