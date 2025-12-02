@@ -2,9 +2,10 @@ import React, { useCallback, useState } from 'react';
 import { GoogleMap, LoadScript, Marker, InfoWindow } from '@react-google-maps/api';
 import { GOOGLE_MAPS_API_KEY, BUKIDNON_CENTER } from '../lib/supabase';
 import { useEmergencyTeams } from '../hooks/useEmergencyTeams';
+import { useBookmarks } from '../hooks/useBookmarks';
 import { getTeamColor, getTeamLabel, calculateDistance, formatDistance } from '../utils/mapHelpers';
 import { Button } from './Button';
-import { PhoneIcon, MapPinIcon, PhoneCallIcon } from 'lucide-react';
+import { PhoneIcon, MapPinIcon, PhoneCallIcon, BookmarkIcon } from 'lucide-react';
 import type { EmergencyTeam } from '../types/database';
 const mapContainerStyle = {
   width: '100%',
@@ -34,6 +35,12 @@ export function MapView({
     loading,
     error
   } = useEmergencyTeams();
+  const {
+    isBookmarked,
+    addBookmark,
+    removeBookmark,
+    bookmarks
+  } = useBookmarks();
   const [selectedTeam, setSelectedTeam] = useState<EmergencyTeam | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const handleMarkerClick = useCallback((team: EmergencyTeam) => {
@@ -47,6 +54,21 @@ export function MapView({
       onCallTeam(selectedTeam);
     }
   }, [selectedTeam, onCallTeam]);
+  const handleToggleBookmark = useCallback(async () => {
+    if (!selectedTeam) return;
+    try {
+      if (isBookmarked(selectedTeam.id)) {
+        const bookmark = bookmarks.find(b => b.team.id === selectedTeam.id);
+        if (bookmark) {
+          await removeBookmark(bookmark.id);
+        }
+      } else {
+        await addBookmark(selectedTeam.id);
+      }
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
+    }
+  }, [selectedTeam, isBookmarked, addBookmark, removeBookmark, bookmarks]);
   if (error) {
     return <div className="w-full h-full min-h-[500px] bg-gray-100 rounded-lg flex items-center justify-center">
         <div className="text-center p-8">
@@ -62,14 +84,14 @@ export function MapView({
       <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} onLoad={() => setMapLoaded(true)}>
         <GoogleMap mapContainerStyle={mapContainerStyle} center={BUKIDNON_CENTER} zoom={11} options={mapOptions}>
           {/* User Location Marker */}
-          <Marker position={userLocation} icon={{
+          {userLocation && <Marker position={userLocation} icon={{
           path: window.google?.maps?.SymbolPath?.CIRCLE || 0,
           scale: 8,
           fillColor: '#ef4444',
           fillOpacity: 1,
           strokeColor: '#ffffff',
           strokeWeight: 2
-        }} title="Your Location" />
+        }} title="Your Location" />}
 
           {/* Emergency Team Markers */}
           {teams.map(team => {
@@ -120,18 +142,23 @@ export function MapView({
                     <span>{selectedTeam.hotline}</span>
                   </div>
 
-                  <div className="flex items-center gap-2 text-sm font-medium text-blue-600">
-                    <MapPinIcon className="w-4 h-4 flex-shrink-0" />
-                    <span>
-                      {formatDistance(calculateDistance(userLocation.lat, userLocation.lng, selectedTeam.lat, selectedTeam.lng))}
-                    </span>
-                  </div>
+                  {userLocation && <div className="flex items-center gap-2 text-sm font-medium text-blue-600">
+                      <MapPinIcon className="w-4 h-4 flex-shrink-0" />
+                      <span>
+                        {formatDistance(calculateDistance(userLocation.lat, userLocation.lng, selectedTeam.lat, selectedTeam.lng))}
+                      </span>
+                    </div>}
                 </div>
 
-                <Button variant="danger" fullWidth size="sm" onClick={handleCallTeam} className="flex items-center justify-center gap-2">
-                  <PhoneIcon className="w-4 h-4" />
-                  Start Video Call
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="danger" fullWidth size="sm" onClick={handleCallTeam} className="flex items-center justify-center gap-2">
+                    <PhoneIcon className="w-4 h-4" />
+                    Call Now
+                  </Button>
+                  <button onClick={handleToggleBookmark} className={`px-3 py-2 rounded-lg transition-colors ${isBookmarked(selectedTeam.id) ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                    <BookmarkIcon className="w-4 h-4" fill={isBookmarked(selectedTeam.id) ? 'currentColor' : 'none'} />
+                  </button>
+                </div>
               </div>
             </InfoWindow>}
         </GoogleMap>

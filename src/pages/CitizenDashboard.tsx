@@ -1,20 +1,56 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useGeolocation } from '../hooks/useGeolocation';
+import { useCallHistory } from '../hooks/useCallHistory';
+import { useBookmarks } from '../hooks/useBookmarks';
+import { useWebRTC } from '../hooks/useWebRTC';
 import { Button } from '../components/Button';
 import { MapView } from '../components/MapView';
-import { MapPinIcon, ClockIcon, BookmarkIcon, LogOutIcon, ChevronUpIcon, ChevronDownIcon } from 'lucide-react';
+import { VideoCallModal } from '../components/VideoCallModal';
+import { CallHistoryModal } from '../components/CallHistoryModal';
+import { BookmarksModal } from '../components/BookmarksModal';
+import { MapPinIcon, ClockIcon, BookmarkIcon, LogOutIcon, ChevronUpIcon, ChevronDownIcon, RefreshCwIcon } from 'lucide-react';
 import type { EmergencyTeam } from '../types/database';
 export function CitizenDashboard() {
   const {
     profile,
     signOut
   } = useAuth();
+  const {
+    latitude,
+    longitude,
+    loading: locationLoading,
+    refreshLocation
+  } = useGeolocation();
+  const {
+    calls
+  } = useCallHistory();
+  const {
+    bookmarks
+  } = useBookmarks();
+  const {
+    callState,
+    initiateCall,
+    endCall
+  } = useWebRTC();
   const [isPanelExpanded, setIsPanelExpanded] = useState(false);
-  const handleCallTeam = (team: EmergencyTeam) => {
-    // TODO: Implement video call functionality
-    console.log('Initiating call to:', team);
-    alert(`Video call to ${team.name} will be implemented in the next phase`);
+  const [showCallHistory, setShowCallHistory] = useState(false);
+  const [showBookmarks, setShowBookmarks] = useState(false);
+  const handleCallTeam = async (team: EmergencyTeam) => {
+    try {
+      // In a real app, you'd get the actual admin user ID for this team
+      // For now, we'll use a placeholder
+      const adminId = 'admin-user-id'; // TODO: Get actual admin ID from team
+      await initiateCall(team, adminId);
+    } catch (error) {
+      console.error('Error initiating call:', error);
+      alert('Failed to initiate call. Please check camera/microphone permissions.');
+    }
   };
+  const userLocation = latitude && longitude ? {
+    lat: latitude,
+    lng: longitude
+  } : undefined;
   return <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
       {/* Compact Header */}
       <header className="bg-red-600 text-white py-3 px-4 shadow-lg z-20 flex-shrink-0">
@@ -36,7 +72,7 @@ export function CitizenDashboard() {
 
       {/* Full Map Area */}
       <div className="flex-1 relative">
-        <MapView onCallTeam={handleCallTeam} />
+        <MapView onCallTeam={handleCallTeam} userLocation={userLocation} />
 
         {/* Emergency Alert Overlay */}
         <div className="absolute top-4 left-4 right-4 md:left-auto md:right-4 md:max-w-md z-10">
@@ -73,44 +109,53 @@ export function CitizenDashboard() {
         `}>
           {/* Your Location */}
           <div className="text-center">
-            <button className="w-full p-4 rounded-lg hover:bg-red-50 transition-colors group">
-              <div className="bg-red-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-red-200 transition-colors">
-                <MapPinIcon className="w-6 h-6 text-red-600" />
+            <button onClick={refreshLocation} className="w-full p-4 rounded-lg hover:bg-red-50 transition-colors group">
+              <div className="bg-red-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-red-200 transition-colors relative">
+                {locationLoading ? <RefreshCwIcon className="w-6 h-6 text-red-600 animate-spin" /> : <MapPinIcon className="w-6 h-6 text-red-600" />}
               </div>
               <h3 className="font-semibold text-gray-900 text-sm mb-1">
                 Your Location
               </h3>
-              <p className="text-xs text-gray-600">Bukidnon, Philippines</p>
-              <p className="text-xs text-blue-600 font-medium mt-1">
-                Update location
-              </p>
+              {latitude && longitude ? <>
+                  <p className="text-xs text-gray-600 truncate">
+                    {latitude.toFixed(4)}°, {longitude.toFixed(4)}°
+                  </p>
+                  <p className="text-xs text-blue-600 font-medium mt-1">
+                    Tap to refresh
+                  </p>
+                </> : <p className="text-xs text-gray-500">Getting location...</p>}
             </button>
           </div>
 
           {/* Call History */}
           <div className="text-center">
-            <button className="w-full p-4 rounded-lg hover:bg-gray-50 transition-colors group">
+            <button onClick={() => setShowCallHistory(true)} className="w-full p-4 rounded-lg hover:bg-gray-50 transition-colors group">
               <div className="bg-gray-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-gray-200 transition-colors">
                 <ClockIcon className="w-6 h-6 text-gray-600" />
               </div>
               <h3 className="font-semibold text-gray-900 text-sm mb-1">
                 Call History
               </h3>
-              <p className="text-xs text-gray-600">No recent calls</p>
+              <p className="text-xs text-gray-600">
+                {calls.length} {calls.length === 1 ? 'call' : 'calls'}
+              </p>
               <p className="text-xs text-gray-400 mt-1">View all</p>
             </button>
           </div>
 
           {/* Bookmarks */}
           <div className="text-center">
-            <button className="w-full p-4 rounded-lg hover:bg-gray-50 transition-colors group">
+            <button onClick={() => setShowBookmarks(true)} className="w-full p-4 rounded-lg hover:bg-gray-50 transition-colors group">
               <div className="bg-gray-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-gray-200 transition-colors">
                 <BookmarkIcon className="w-6 h-6 text-gray-600" />
               </div>
               <h3 className="font-semibold text-gray-900 text-sm mb-1">
                 Bookmarks
               </h3>
-              <p className="text-xs text-gray-600">0 saved teams</p>
+              <p className="text-xs text-gray-600">
+                {bookmarks.length} saved{' '}
+                {bookmarks.length === 1 ? 'team' : 'teams'}
+              </p>
               <p className="text-xs text-gray-400 mt-1">Quick access</p>
             </button>
           </div>
@@ -118,10 +163,27 @@ export function CitizenDashboard() {
 
         {/* Desktop: Always show quick stats */}
         <div className="hidden md:grid grid-cols-3 gap-4 px-4 pb-4 text-center text-xs text-gray-500">
-          <div>Lat: 8.0542° N</div>
-          <div>Last call: Never</div>
-          <div>Saved: 0 teams</div>
+          <div>
+            {latitude && longitude ? `${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E` : 'Location unavailable'}
+          </div>
+          <div>
+            Last call:{' '}
+            {calls.length > 0 ? new Date(calls[0].created_at).toLocaleDateString() : 'Never'}
+          </div>
+          <div>
+            Saved: {bookmarks.length}{' '}
+            {bookmarks.length === 1 ? 'team' : 'teams'}
+          </div>
         </div>
       </div>
+
+      {/* Video Call Modal */}
+      <VideoCallModal callState={callState} onEndCall={endCall} />
+
+      {/* Call History Modal */}
+      <CallHistoryModal isOpen={showCallHistory} onClose={() => setShowCallHistory(false)} />
+
+      {/* Bookmarks Modal */}
+      <BookmarksModal isOpen={showBookmarks} onClose={() => setShowBookmarks(false)} onCallTeam={handleCallTeam} />
     </div>;
 }
