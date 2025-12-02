@@ -136,8 +136,16 @@ CREATE POLICY "Admins can view all profiles"
     )
   );
 
--- Enable realtime for profiles table
-ALTER PUBLICATION supabase_realtime ADD TABLE profiles;
+-- Enable realtime for profiles table (only if not already added)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'profiles'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE profiles;
+  END IF;
+END $$;
 
 -- Create a function to handle new user profile creation
 DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
