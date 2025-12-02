@@ -39,9 +39,19 @@ export function useWebRTC() {
         localStream: stream
       }));
       return stream;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error accessing media devices:', error);
-      throw new Error('Could not access camera/microphone. Please check permissions.');
+
+      // Provide specific error messages
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        throw new Error('Camera or microphone permission denied. Please allow access in your browser settings.');
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        throw new Error('No camera or microphone found. Please connect a device and try again.');
+      } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+        throw new Error('Camera or microphone is already in use by another application.');
+      } else {
+        throw new Error('Could not access camera/microphone: ' + error.message);
+      }
     }
   };
 
@@ -69,15 +79,19 @@ export function useWebRTC() {
     // Handle ICE candidates
     pc.onicecandidate = async event => {
       if (event.candidate && callState.callId && user) {
-        await supabase.from('call_signals').insert({
-          call_id: callState.callId,
-          caller_id: user.id,
-          receiver_id: callState.remoteUserId,
-          type: 'ice-candidate',
-          signal: {
-            candidate: event.candidate
-          }
-        });
+        try {
+          await supabase.from('call_signals').insert({
+            call_id: callState.callId,
+            caller_id: user.id,
+            receiver_id: callState.remoteUserId,
+            type: 'ice-candidate',
+            signal: {
+              candidate: event.candidate
+            }
+          });
+        } catch (error) {
+          console.error('Error sending ICE candidate:', error);
+        }
       }
     };
 
@@ -93,7 +107,12 @@ export function useWebRTC() {
 
   // Initiate call (Citizen side)
   const initiateCall = async (team: EmergencyTeam, receiverId: string) => {
-    if (!user) return;
+    if (!user) {
+      throw new Error('You must be logged in to make a call');
+    }
+    if (!receiverId || receiverId === 'admin-user-id') {
+      throw new Error('No admin available for this team. Please try again later.');
+    }
     try {
       setCallState(prev => ({
         ...prev,
@@ -111,7 +130,10 @@ export function useWebRTC() {
         team_id: team.id,
         status: 'initiated'
       }).select().single();
-      if (callError) throw callError;
+      if (callError) {
+        console.error('Database error:', callError);
+        throw new Error('Failed to create call log. Please check your connection and try again.');
+      }
 
       // Update state with call info
       setCallState(prev => ({
@@ -142,12 +164,17 @@ export function useWebRTC() {
 
       // Subscribe to signals from receiver
       subscribeToSignals(callLog.id, receiverId);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error initiating call:', error);
       setCallState(prev => ({
         ...prev,
         status: 'idle'
       }));
+
+      // Stop any media streams that were started
+      if (callState.localStream) {
+        callState.localStream.getTracks().forEach(track => track.stop());
+      }
       throw error;
     }
   };

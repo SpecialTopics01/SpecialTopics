@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { useCallHistory } from '../hooks/useCallHistory';
 import { useBookmarks } from '../hooks/useBookmarks';
 import { useWebRTC } from '../hooks/useWebRTC';
+import { useAdminUsers } from '../hooks/useAdminUsers';
 import { Button } from '../components/Button';
 import { MapView } from '../components/MapView';
 import { VideoCallModal } from '../components/VideoCallModal';
 import { CallHistoryModal } from '../components/CallHistoryModal';
 import { BookmarksModal } from '../components/BookmarksModal';
-import { MapPinIcon, ClockIcon, BookmarkIcon, LogOutIcon, ChevronUpIcon, ChevronDownIcon, RefreshCwIcon } from 'lucide-react';
+import { MapPinIcon, ClockIcon, BookmarkIcon, LogOutIcon, ChevronUpIcon, ChevronDownIcon, RefreshCwIcon, AlertCircleIcon } from 'lucide-react';
 import type { EmergencyTeam } from '../types/database';
 export function CitizenDashboard() {
   const {
@@ -33,20 +34,44 @@ export function CitizenDashboard() {
     initiateCall,
     endCall
   } = useWebRTC();
+  const {
+    admins,
+    loading: adminsLoading
+  } = useAdminUsers();
   const [isPanelExpanded, setIsPanelExpanded] = useState(false);
   const [showCallHistory, setShowCallHistory] = useState(false);
   const [showBookmarks, setShowBookmarks] = useState(false);
+  const [callError, setCallError] = useState<string | null>(null);
   const handleCallTeam = async (team: EmergencyTeam) => {
+    setCallError(null);
     try {
-      // In a real app, you'd get the actual admin user ID for this team
-      // For now, we'll use a placeholder
-      const adminId = 'admin-user-id'; // TODO: Get actual admin ID from team
-      await initiateCall(team, adminId);
-    } catch (error) {
+      // Find an admin user with matching team type
+      const matchingAdmin = admins.find(admin => admin.team === team.type);
+      if (!matchingAdmin) {
+        // Show helpful error if no admin is available
+        setCallError(`No ${team.type} team admin is currently registered. ` + `Please try again later or contact: ${team.hotline}`);
+        return;
+      }
+      await initiateCall(team, matchingAdmin.id);
+    } catch (error: any) {
       console.error('Error initiating call:', error);
-      alert('Failed to initiate call. Please check camera/microphone permissions.');
+      // Show specific error messages
+      if (error.message.includes('camera') || error.message.includes('microphone')) {
+        setCallError('Camera or microphone access denied. Please allow permissions in your browser settings and try again.');
+      } else if (error.message.includes('constraint')) {
+        setCallError('Database error. Please make sure you are registered and logged in correctly.');
+      } else {
+        setCallError(error.message || 'Failed to initiate call. Please try again or contact support.');
+      }
     }
   };
+  // Auto-hide error after 10 seconds
+  useEffect(() => {
+    if (callError) {
+      const timer = setTimeout(() => setCallError(null), 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [callError]);
   const userLocation = latitude && longitude ? {
     lat: latitude,
     lng: longitude
@@ -90,6 +115,32 @@ export function CitizenDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Error Alert */}
+        {callError && <div className="absolute top-24 left-4 right-4 md:left-auto md:right-4 md:max-w-md z-10">
+            <div className="bg-white rounded-lg shadow-2xl p-4 border-2 border-red-500">
+              <div className="flex items-start gap-3">
+                <AlertCircleIcon className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="font-bold text-red-900 text-sm mb-1">
+                    Call Failed
+                  </h3>
+                  <p className="text-red-700 text-xs">{callError}</p>
+                  <button onClick={() => setCallError(null)} className="text-red-600 text-xs font-medium mt-2 hover:underline">
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>}
+
+        {/* Loading Admins Indicator */}
+        {adminsLoading && <div className="absolute bottom-24 left-4 bg-white rounded-lg shadow-lg p-3 text-sm text-gray-600">
+            <div className="flex items-center gap-2">
+              <RefreshCwIcon className="w-4 h-4 animate-spin" />
+              <span>Connecting to emergency teams...</span>
+            </div>
+          </div>}
       </div>
 
       {/* Bottom Feature Panel */}
@@ -171,8 +222,7 @@ export function CitizenDashboard() {
             {calls.length > 0 ? new Date(calls[0].created_at).toLocaleDateString() : 'Never'}
           </div>
           <div>
-            Saved: {bookmarks.length}{' '}
-            {bookmarks.length === 1 ? 'team' : 'teams'}
+            {admins.length} admin{admins.length !== 1 ? 's' : ''} available
           </div>
         </div>
       </div>
