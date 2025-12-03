@@ -1,14 +1,32 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, WEBRTC_CONFIG, getOptimizedMediaConstraints, isMobileDevice } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import type { CallState, CallStatus } from '../types/webrtc';
 import type { EmergencyTeam } from '../types/database';
 const ICE_SERVERS = {
-  iceServers: [{
-    urls: 'stun:stun.l.google.com:19302'
-  }, {
-    urls: 'stun:stun1.l.google.com:19302'
-  }]
+  iceServers: [
+    // Google's public STUN servers (free, good for testing)
+    {
+      urls: 'stun:stun.l.google.com:19302'
+    },
+    {
+      urls: 'stun:stun1.l.google.com:19302'
+    },
+    // Add TURN servers for production (when peers are behind strict NATs)
+    // Replace with your own TURN server credentials
+    {
+      urls: 'turn:turn.example.com:3478',
+      username: 'your-turn-username',
+      credential: 'your-turn-password'
+    },
+    // Alternative free STUN servers for better connectivity
+    {
+      urls: 'stun:stun.stunprotocol.org:3478'
+    },
+    {
+      urls: 'stun:stun.voipstunt.com:3478'
+    }
+  ]
 };
 export function useWebRTC() {
   const {
@@ -27,13 +45,12 @@ export function useWebRTC() {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const channelRef = useRef<any>(null);
 
-  // Initialize media stream
-  const initializeMedia = async () => {
+  // Initialize media stream with cross-platform optimizations
+  const initializeMedia = async (constraints?: MediaStreamConstraints) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true
-      });
+      const mediaConstraints = constraints || getOptimizedMediaConstraints();
+      const stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+
       setCallState(prev => ({
         ...prev,
         localStream: stream
@@ -42,22 +59,31 @@ export function useWebRTC() {
     } catch (error: any) {
       console.error('Error accessing media devices:', error);
 
-      // Provide specific error messages
+      // Enhanced error handling for cross-platform
       if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-        throw new Error('Camera or microphone permission denied. Please allow access in your browser settings.');
+        throw new Error('Camera or microphone permission denied. Please allow access in your browser/app settings.');
       } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
         throw new Error('No camera or microphone found. Please connect a device and try again.');
       } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
         throw new Error('Camera or microphone is already in use by another application.');
+      } else if (error.name === 'OverconstrainedError') {
+        // Retry with lower constraints
+        console.warn('Media constraints not supported, retrying with basic constraints');
+        return initializeMedia({ video: true, audio: true });
+      } else if (error.name === 'NotSupportedError') {
+        throw new Error('Your device does not support the required media features.');
       } else {
         throw new Error('Could not access camera/microphone: ' + error.message);
       }
     }
   };
 
-  // Create peer connection
+  // Create peer connection with cross-platform configuration
   const createPeerConnection = (isInitiator: boolean, stream: MediaStream) => {
-    const pc = new RTCPeerConnection(ICE_SERVERS);
+    const pc = new RTCPeerConnection({
+      ...WEBRTC_CONFIG.connection,
+      iceServers: WEBRTC_CONFIG.iceServers
+    });
     peerConnectionRef.current = pc;
 
     // Add local stream tracks to peer connection
@@ -97,11 +123,46 @@ export function useWebRTC() {
       }
     };
 
-    // Handle connection state changes
+    // Handle connection state changes with reconnection logic
     pc.onconnectionstatechange = () => {
-      console.log('Connection state:', pc.connectionState);
-      if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-        endCall();
+      console.log('WebRTC Connection state:', pc.connectionState);
+
+      switch (pc.connectionState) {
+        case 'connecting':
+          setCallState(prev => ({ ...prev, status: 'connecting' }));
+          break;
+        case 'connected':
+          setCallState(prev => ({ ...prev, status: 'connected' }));
+          break;
+        case 'disconnected':
+          // On mobile networks, disconnection might be temporary
+          console.log('Connection disconnected, attempting to reconnect...');
+          setCallState(prev => ({ ...prev, status: 'reconnecting' }));
+          // Give it time to reconnect before ending call
+          setTimeout(() => {
+            if (pc.connectionState === 'disconnected') {
+              console.log('Failed to reconnect, ending call');
+              endCall();
+            }
+          }, 10000); // 10 second timeout
+          break;
+        case 'failed':
+          console.log('Connection failed, ending call');
+          endCall();
+          break;
+        case 'closed':
+          endCall();
+          break;
+      }
+    };
+
+    // Handle ICE connection state changes
+    pc.oniceconnectionstatechange = () => {
+      console.log('ICE Connection state:', pc.iceConnectionState);
+
+      if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+        console.warn('ICE connection issues detected');
+        // Could implement ICE restart here for better reliability
       }
     };
     return pc;
